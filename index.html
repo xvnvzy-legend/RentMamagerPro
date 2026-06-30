@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RentManager Pro — учёт аренды</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz@14..32&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter',sans-serif; }
+        body { background:#f4f7fc; min-height:100vh; display:flex; align-items:center; justify-content:center; }
+        #loginPage { width:100%; max-width:400px; background:#fff; border-radius:24px; padding:40px 32px; box-shadow:0 12px 40px rgba(0,0,0,0.08); margin:20px; }
+        #loginPage h1 { font-size:28px; font-weight:600; color:#0b2b4a; margin-bottom:8px; }
+        #loginPage p.sub { color:#5e6f8d; font-size:15px; margin-bottom:28px; }
+        #loginPage label { display:block; font-weight:500; color:#1f2a44; margin:16px 0 4px; font-size:14px; }
+        #loginPage input { width:100%; padding:12px 14px; border:1px solid #d0dae8; border-radius:12px; font-size:15px; }
+        #loginPage input:focus { border-color:#2a7de1; outline:none; box-shadow:0 0 0 3px rgba(42,125,225,0.15); }
+        #loginPage .btn-primary { width:100%; margin-top:24px; background:#2a7de1; border:none; color:#fff; font-weight:600; font-size:16px; padding:14px; border-radius:12px; cursor:pointer; }
+        #loginPage .btn-primary:hover { background:#1a5fb0; }
+        #loginError { color:#d14c4c; font-size:14px; margin-top:12px; display:none; }
+        .test-creds { margin-top:20px; font-size:13px; color:#5e6f8d; border-top:1px solid #e6ecf5; padding-top:16px; }
+        .test-creds span { display:inline-block; background:#f0f4fe; padding:4px 12px; border-radius:20px; margin:2px 4px 2px 0; font-family:monospace; font-size:13px; }
+
+        #app { display:none; width:100%; max-width:1440px; min-height:100vh; background:#f4f7fc; margin:0 auto; }
+        .app-layout { display:flex; min-height:100vh; }
+        .sidebar { width:240px; background:#fff; border-right:1px solid #e6ecf5; padding:24px 16px; height:100vh; overflow-y:auto; flex-shrink:0; }
+        .sidebar .logo { font-size:22px; font-weight:700; color:#0b2b4a; margin-bottom:32px; display:flex; align-items:center; gap:8px; }
+        .sidebar .logo i { color:#2a7de1; }
+        .sidebar nav { display:flex; flex-direction:column; gap:6px; }
+        .sidebar nav a { display:flex; align-items:center; gap:12px; padding:10px 14px; border-radius:12px; color:#1f2a44; text-decoration:none; font-weight:500; font-size:15px; cursor:pointer; }
+        .sidebar nav a i { width:20px; text-align:center; color:#5e6f8d; }
+        .sidebar nav a:hover { background:#f0f4fe; }
+        .sidebar nav a.active { background:#e0ebfc; color:#1a5fb0; }
+        .sidebar nav a.active i { color:#2a7de1; }
+        .sidebar .user-info { margin-top:32px; padding-top:16px; border-top:1px solid #e6ecf5; display:flex; align-items:center; justify-content:space-between; }
+        .sidebar .user-info .name { font-weight:500; font-size:14px; }
+        .sidebar .user-info .role { font-size:12px; color:#5e6f8d; }
+        .sidebar .user-info .logout { background:none; border:none; color:#b0bccf; font-size:18px; cursor:pointer; padding:4px 8px; border-radius:8px; }
+        .sidebar .user-info .logout:hover { background:#f0f0f0; color:#d14c4c; }
+
+        .main-content { flex:1; padding:28px 32px; overflow-x:auto; }
+        .page { display:none; animation:fade 0.2s ease; }
+        .page.active-page { display:block; }
+        @keyframes fade { 0%{opacity:0.4;} 100%{opacity:1;} }
+        .page-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; }
+        .page-header h2 { font-size:26px; font-weight:600; color:#0b2b4a; }
+        .btn { padding:8px 18px; border-radius:30px; border:none; font-weight:500; font-size:14px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
+        .btn-primary { background:#2a7de1; color:#fff; }
+        .btn-primary:hover { background:#1a5fb0; }
+        .btn-outline { background:transparent; border:1px solid #d0dae8; color:#1f2a44; }
+        .btn-outline:hover { background:#f0f4fe; }
+        .btn-danger { background:#d14c4c; color:#fff; }
+        .btn-danger:hover { background:#b33a3a; }
+        .btn-success { background:#2a9d8f; color:#fff; }
+        .btn-success:hover { background:#1e7a6e; }
+
+        .stats-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:16px; margin-bottom:28px; }
+        .stat-card { background:#fff; padding:20px 18px; border-radius:20px; border:1px solid #e6ecf5; }
+        .stat-card .number { font-size:32px; font-weight:700; color:#0b2b4a; }
+        .stat-card .label { font-size:14px; color:#5e6f8d; margin-top:4px; }
+
+        .filter-bar { display:flex; flex-wrap:wrap; gap:12px; background:#fff; padding:14px 18px; border-radius:20px; margin-bottom:24px; border:1px solid #e6ecf5; align-items:center; }
+        .filter-bar input,.filter-bar select { padding:8px 14px; border:1px solid #d0dae8; border-radius:30px; font-size:14px; background:#fff; min-width:140px; }
+        .filter-bar input:focus,.filter-bar select:focus { border-color:#2a7de1; outline:none; }
+        .filter-bar .btn { margin-left:auto; }
+
+        .card-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(280px,1fr)); gap:18px; }
+        .item-card { background:#fff; border-radius:20px; padding:18px 20px; border:1px solid #e6ecf5; }
+        .item-card .title { font-weight:600; font-size:16px; color:#0b2b4a; margin-bottom:6px; }
+        .item-card .sub { font-size:14px; color:#5e6f8d; margin-bottom:4px; }
+        .badge { display:inline-block; padding:2px 12px; border-radius:30px; font-size:12px; font-weight:500; margin-top:6px; }
+        .badge-success { background:#d3f0eb; color:#1e7a6e; }
+        .badge-warning { background:#fff3d4; color:#b47d2b; }
+        .badge-danger { background:#fce4e4; color:#b33a3a; }
+        .badge-info { background:#e0ebfc; color:#1a5fb0; }
+        .item-card .actions-card { margin-top:14px; display:flex; gap:8px; flex-wrap:wrap; }
+        .item-card .actions-card .btn { font-size:13px; padding:4px 14px; }
+
+        .modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.3); backdrop-filter:blur(4px); align-items:center; justify-content:center; z-index:999; }
+        .modal-overlay.open { display:flex; }
+        .modal { background:#fff; max-width:540px; width:90%; border-radius:28px; padding:32px 28px; box-shadow:0 24px 60px rgba(0,0,0,0.2); max-height:90vh; overflow-y:auto; }
+        .modal h3 { font-size:22px; font-weight:600; color:#0b2b4a; margin-bottom:20px; }
+        .modal label { display:block; font-weight:500; font-size:14px; color:#1f2a44; margin:14px 0 4px; }
+        .modal input,.modal select { width:100%; padding:10px 14px; border:1px solid #d0dae8; border-radius:12px; font-size:14px; }
+        .modal .form-row { display:flex; gap:12px; }
+        .modal .form-row > * { flex:1; }
+        .modal .modal-actions { display:flex; justify-content:flex-end; gap:12px; margin-top:24px; }
+        .modal .modal-actions .btn { padding:10px 28px; }
+        .modal .error-msg { color:#d14c4c; font-size:14px; margin-top:8px; }
+
+        .table-wrap { overflow-x:auto; background:#fff; border-radius:20px; border:1px solid #e6ecf5; padding:4px 0; }
+        table { width:100%; border-collapse:collapse; font-size:14px; }
+        th { text-align:left; padding:14px 16px; background:#f8faff; color:#1f2a44; font-weight:600; border-bottom:1px solid #e6ecf5; }
+        td { padding:12px 16px; border-bottom:1px solid #f0f4fe; }
+        .table-actions { display:flex; gap:6px; }
+
+        @media (max-width:768px) {
+            .sidebar { width:100%; height:auto; position:relative; border-right:none; border-bottom:1px solid #e6ecf5; padding:16px; }
+            .app-layout { flex-direction:column; }
+            .main-content { padding:16px; }
+            .stats-grid { grid-template-columns:1fr 1fr; }
+            .filter-bar { flex-direction:column; align-items:stretch; }
+            .filter-bar .btn { margin-left:0; }
+            .modal .form-row { flex-direction:column; }
+        }
+        @media (max-width:480px) { .stats-grid { grid-template-columns:1fr; } .card-grid { grid-template-columns:1fr; } }
+    </style>
+</head>
+<body>
+
+<!-- СТРАНИЦА ВХОДА -->
+<div id="loginPage">
+    <h1>🏢 RentManager</h1>
+    <p class="sub">Войдите в систему учёта аренды</p>
+    <label>Логин</label>
+    <input type="text" id="loginInput" value="admin" />
+    <label>Пароль</label>
+    <input type="password" id="passwordInput" value="admin123" />
+    <button class="btn-primary" id="loginBtn">Войти</button>
+    <div id="loginError">Неверный логин или пароль</div>
+    <div class="test-creds">
+        <strong>Тестовые учётные записи:</strong><br />
+        <span>admin / admin123</span>
+        <span>manager / manager123</span>
+    </div>
+</div>
+
+<!-- ОСНОВНОЕ ПРИЛОЖЕНИЕ -->
+<div id="app">
+    <div class="app-layout">
+        <aside class="sidebar">
+            <div class="logo"><i class="fas fa-building"></i> RentManager</div>
+            <nav id="mainNav">
+                <a data-page="dashboard" class="active"><i class="fas fa-chart-pie"></i> Статистика</a>
+                <a data-page="premises"><i class="fas fa-door-open"></i> Помещения</a>
+                <a data-page="tenants"><i class="fas fa-users"></i> Арендаторы</a>
+                <a data-page="contracts"><i class="fas fa-file-signature"></i> Договоры</a>
+                <a data-page="payments"><i class="fas fa-credit-card"></i> Платежи</a>
+                <a data-page="users" id="usersNav" style="display:none;"><i class="fas fa-user-cog"></i> Пользователи</a>
+            </nav>
+            <div class="user-info">
+                <div>
+                    <div class="name" id="currentUserName">Иван</div>
+                    <div class="role" id="currentUserRole">менеджер</div>
+                </div>
+                <button class="logout" id="logoutBtn" title="Выйти"><i class="fas fa-sign-out-alt"></i></button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <!-- DASHBOARD -->
+            <div id="page-dashboard" class="page active-page">
+                <div class="page-header"><h2>📊 Статистика</h2></div>
+                <div class="stats-grid" id="statsGrid">
+                    <div class="stat-card"><div class="number" id="statPremises">0</div><div class="label">Всего помещений</div></div>
+                    <div class="stat-card"><div class="number" id="statFree">0</div><div class="label">Свободно</div></div>
+                    <div class="stat-card"><div class="number" id="statRented">0</div><div class="label">Арендовано</div></div>
+                    <div class="stat-card"><div class="number" id="statContracts">0</div><div class="label">Активных договоров</div></div>
+                    <div class="stat-card"><div class="number" id="statDebt">0 ₽</div><div class="label">Общая задолженность</div></div>
+                </div>
+                <div style="background:#fff; border-radius:20px; padding:20px; border:1px solid #e6ecf5;">
+                    <p style="color:#5e6f8d; font-size:15px;">Добро пожаловать в систему учёта аренды. Используйте меню для управления.</p>
+                </div>
+            </div>
+
+            <!-- ПОМЕЩЕНИЯ -->
+            <div id="page-premises" class="page">
+                <div class="page-header">
+                    <h2>🏠 Помещения</h2>
+                    <div class="actions"><button class="btn btn-primary" id="addPremiseBtn"><i class="fas fa-plus"></i> Добавить</button></div>
+                </div>
+                <div class="filter-bar">
+                    <input type="text" id="premiseSearch" placeholder="Поиск по адресу..." />
+                    <select id="premiseStatusFilter"><option value="">Все статусы</option><option value="free">Свободно</option><option value="rented">Арендовано</option><option value="repair">Ремонт</option></select>
+                    <select id="premiseTypeFilter"><option value="">Все типы</option><option value="commercial">Коммерческое</option><option value="residential">Жилое</option><option value="warehouse">Склад</option></select>
+                    <button class="btn btn-outline" id="premiseResetFilter"><i class="fas fa-undo"></i> Сброс</button>
+                </div>
+                <div class="card-grid" id="premiseList"></div>
+            </div>
+
+            <!-- АРЕНДАТОРЫ -->
+            <div id="page-tenants" class="page">
+                <div class="page-header">
+                    <h2>👥 Арендаторы</h2>
+                    <div class="actions"><button class="btn btn-primary" id="addTenantBtn"><i class="fas fa-plus"></i> Добавить</button></div>
+                </div>
+                <div class="filter-bar">
+                    <input type="text" id="tenantSearch" placeholder="Поиск по названию..." />
+                    <button class="btn btn-outline" id="tenantResetFilter"><i class="fas fa-undo"></i> Сброс</button>
+                </div>
+                <div class="card-grid" id="tenantList"></div>
+            </div>
+
+            <!-- ДОГОВОРЫ -->
+            <div id="page-contracts" class="page">
+                <div class="page-header">
+                    <h2>📄 Договоры аренды</h2>
+                    <div class="actions"><button class="btn btn-primary" id="addContractBtn"><i class="fas fa-plus"></i> Создать</button></div>
+                </div>
+                <div class="filter-bar">
+                    <input type="text" id="contractSearch" placeholder="Поиск по адресу или арендатору..." />
+                    <select id="contractStatusFilter"><option value="">Все статусы</option><option value="active">Активный</option><option value="expiring">Истекает</option><option value="expired">Завершён</option><option value="terminated">Расторгнут</option></select>
+                    <button class="btn btn-outline" id="contractResetFilter"><i class="fas fa-undo"></i> Сброс</button>
+                </div>
+                <div class="table-wrap"><table><thead><tr><th>Помещение</th><th>Арендатор</th><th>Период</th><th>Ставка</th><th>Статус</th><th>Действия</th></tr></thead><tbody id="contractTableBody"></tbody></table></div>
+            </div>
+
+            <!-- ПЛАТЕЖИ -->
+            <div id="page-payments" class="page">
+                <div class="page-header">
+                    <h2>💰 Платежи</h2>
+                    <div class="actions"><button class="btn btn-primary" id="addPaymentBtn"><i class="fas fa-plus"></i> Внести платёж</button></div>
+                </div>
+                <div class="filter-bar">
+                    <select id="paymentContractFilter"><option value="">Все договоры</option></select>
+                    <button class="btn btn-outline" id="paymentResetFilter"><i class="fas fa-undo"></i> Сброс</button>
+                </div>
+                <div class="card-grid" id="paymentList"></div>
+            </div>
+
+            <!-- ПОЛЬЗОВАТЕЛИ (только админ) -->
+            <div id="page-users" class="page">
+                <div class="page-header">
+                    <h2>👤 Управление пользователями</h2>
+                    <div class="actions"><button class="btn btn-primary" id="addUserBtn"><i class="fas fa-plus"></i> Добавить</button></div>
+                </div>
+                <div class="table-wrap"><table><thead><tr><th>Имя</th><th>Логин</th><th>Роль</th><th>Действия</th></tr></thead><tbody id="userTableBody"></tbody></table></div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<!-- МОДАЛЬНОЕ ОКНО -->
+<div class="modal-overlay" id="modalOverlay">
+    <div class="modal" id="modalContent">
+        <h3 id="modalTitle">Заголовок</h3>
+        <div id="modalBody"></div>
+        <div class="modal-actions">
+            <button class="btn btn-outline" id="modalCancel">Отмена</button>
+            <button class="btn btn-primary" id="modalSave">Сохранить</button>
+        </div>
+        <div id="modalError" class="error-msg"></div>
+    </div>
+</div>
+
+<script>
+    // ============================================================
+    // 1. ДАННЫЕ И ХРАНИЛИЩЕ
+    // ============================================================
+    const STORAGE_KEY = 'rentManagerData';
+    let db = loadData();
+
+    function defaultData() {
+        return {
+            users: [
+                { id: 1, name: 'Администратор', login: 'admin', password: 'admin123', role: 'admin' },
+                { id: 2, name: 'Менеджер Иван', login: 'manager', password: 'manager123', role: 'manager' }
+            ],
+            premises: [
+                { id: 1, address: 'ул. Ленина, 10, оф. 5', floor: 3, area: 45, type: 'commercial', monthlyRent: 15000, status: 'rented' },
+                { id: 2, address: 'пр. Мира, 22, кв. 8', floor: 5, area: 62, type: 'residential', monthlyRent: 12000, status: 'free' }
+            ],
+            tenants: [
+                { id: 1, name: 'ООО "Ромашка"', contact: 'Петров И.', phone: '+7(999)111-22-33', email: 'roma@mail.ru', inn: '1234567890' },
+                { id: 2, name: 'ИП Иванов А.А.', contact: 'Иванов А.А.', phone: '+7(888)555-66-77', email: 'ivanov@ya.ru', inn: '9876543210' }
+            ],
+            contracts: [
+                { id: 1, premiseId: 1, tenantId: 1, startDate: '2026-01-01', endDate: '2026-12-31', actualEndDate: null, monthlyRent: 15000, paymentDay: 5, status: 'active' }
+            ],
+            payments: [
+                { id: 1, contractId: 1, amount: 15000, paymentDate: '2026-01-05', receiptNumber: 'ПЛ-001', comment: '' },
+                { id: 2, contractId: 1, amount: 15000, paymentDate: '2026-02-05', receiptNumber: 'ПЛ-002', comment: '' }
+            ],
+            nextId: { users: 3, premises: 3, tenants: 3, contracts: 2, payments: 3 }
+        };
+    }
+
+    function loadData() {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+            try { return JSON.parse(raw); } catch(e) {}
+        }
+        const def = defaultData();
+        saveData(def);
+        return def;
+    }
+
+    function saveData(data) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+
+    function getNextId(collection) {
+        const key = collection + 's';
+        if (!db.nextId) db.nextId = {};
+        if (!db.nextId[key]) db.nextId[key] = 1;
+        return db.nextId[key]++;
+    }
+
+    // ============================================================
+    // 2. АВТОРИЗАЦИЯ (ГЛОБАЛЬНАЯ ФУНКЦИЯ)
+    // ============================================================
+    let currentUser = null;
+
+    // Объявляем функцию login как глобальную
+    window.login = function(login, password) {
+        console.log('Попытка входа:', login);
+        const user = db.users.find(u => u.login === login && u.password === password);
+        if (!user) {
+            console.warn('Неверные учётные данные');
+            return false;
+        }
+        currentUser = user;
+        console.log('Успешный вход:', user);
+        return true;
+    };
+
+    // Функция выхода
+    window.logout = function() {
+        currentUser = null;
+        document.getElementById('app').style.display = 'none';
+        document.getElementById('loginPage').style.display = 'block';
+        document.getElementById('loginError').style.display = 'none';
+        // Очищаем возможные активные страницы
+    };
+
+    // ============================================================
+    // 3. ИНИЦИАЛИЗАЦИЯ ПОСЛЕ ЗАГРУЗКИ DOM
+    // ============================================================
+    document.addEventListener('DOMContentLoaded', function() {
+
+        // ============================================================
+        // 4. ОБРАБОТЧИК ВХОДА
+        // ============================================================
+        document.getElementById('loginBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            const loginVal = document.getElementById('loginInput').value.trim();
+            const passVal = document.getElementById('passwordInput').value.trim();
+            const ok = window.login(loginVal, passVal);
+            const errorEl = document.getElementById('loginError');
+            if (!ok) {
+                errorEl.style.display = 'block';
+                return;
+            }
+            errorEl.style.display = 'none';
+            // Показать приложение
+            document.getElementById('loginPage').style.display = 'none';
+            document.getElementById('app').style.display = 'block';
+            document.getElementById('currentUserName').textContent = currentUser.name;
+            document.getElementById('currentUserRole').textContent = currentUser.role === 'admin' ? 'Администратор' : 'Менеджер';
+            // Показать/скрыть пункт "Пользователи"
+            document.getElementById('usersNav').style.display = (currentUser.role === 'admin') ? 'block' : 'none';
+            // Отрисовать всё
+            renderAll();
+            navigateTo('dashboard');
+        });
+
+        // Выход
+        document.getElementById('logoutBtn').addEventListener('click', function() {
+            window.logout();
+        });
+
+        // Enter на полях входа
+        document.getElementById('passwordInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') document.getElementById('loginBtn').click();
+        });
+        document.getElementById('loginInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') document.getElementById('loginBtn').click();
+        });
+
+        // ============================================================
+        // 5. НАВИГАЦИЯ
+        // ============================================================
+        function navigateTo(pageId) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
+            const target = document.getElementById('page-' + pageId);
+            if (target) target.classList.add('active-page');
+            document.querySelectorAll('#mainNav a').forEach(a => a.classList.remove('active'));
+            const navLink = document.querySelector(`#mainNav a[data-page="${pageId}"]`);
+            if (navLink) navLink.classList.add('active');
+            // Рендеринг
+            if (pageId === 'dashboard') renderDashboard();
+            if (pageId === 'premises') renderPremises();
+            if (pageId === 'tenants') renderTenants();
+            if (pageId === 'contracts') renderContracts();
+            if (pageId === 'payments') renderPayments();
+            if (pageId === 'users' && currentUser && currentUser.role === 'admin') renderUsers();
+        }
+
+        document.querySelectorAll('#mainNav a[data-page]').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const page = this.dataset.page;
+                if (page === 'users' && (!currentUser || currentUser.role !== 'admin')) return;
+                navigateTo(page);
+            });
+        });
+
+        // ============================================================
+        // 6. ОТРИСОВКА ВСЕХ РАЗДЕЛОВ
+        // ============================================================
+        function renderAll() {
+            renderDashboard();
+            renderPremises();
+            renderTenants();
+            renderContracts();
+            renderPayments();
+            if (currentUser && currentUser.role === 'admin') renderUsers();
+        }
+
+        // ============================================================
+        // 7. DASHBOARD
+        // ============================================================
+        function renderDashboard() {
+            const total = db.premises.length;
+            const free = db.premises.filter(p => p.status === 'free').length;
+            const rented = db.premises.filter(p => p.status === 'rented').length;
+            const activeContracts = db.contracts.filter(c => c.status === 'active' || c.status === 'expiring').length;
+            let totalExpected = 0, totalPaid = 0;
+            const now = new Date();
+            db.contracts.forEach(c => {
+                if (c.status === 'active' || c.status === 'expiring') {
+                    const start = new Date(c.startDate);
+                    const end = new Date(c.endDate);
+                    let months = 0;
+                    let d = new Date(start);
+                    while (d <= now && d <= end) {
+                        months++;
+                        d.setMonth(d.getMonth() + 1);
+                    }
+                    const endDate = new Date(c.endDate);
+                    if (now > endDate) {
+                        months = (endDate.getFullYear() - start.getFullYear()) * 12 + (endDate.getMonth() - start.getMonth()) + 1;
+                    }
+                    if (months < 0) months = 0;
+                    totalExpected += months * c.monthlyRent;
+                }
+            });
+            const paidSum = db.payments.reduce((sum, p) => sum + p.amount, 0);
+            const debt = Math.max(0, totalExpected - paidSum);
+            document.getElementById('statPremises').textContent = total;
+            document.getElementById('statFree').textContent = free;
+            document.getElementById('statRented').textContent = rented;
+            document.getElementById('statContracts').textContent = activeContracts;
+            document.getElementById('statDebt').textContent = debt.toLocaleString() + ' ₽';
+        }
+
+        // ============================================================
+        // 8. ПОМЕЩЕНИЯ (CRUD)
+        // ============================================================
+        function renderPremises() {
+            const search = document.getElementById('premiseSearch').value.toLowerCase();
+            const status = document.getElementById('premiseStatusFilter').value;
+            const type = document.getElementById('premiseTypeFilter').value;
+            let list = db.premises.filter(p => {
+                const matchSearch = p.address.toLowerCase().includes(search);
+                const matchStatus = status ? p.status === status : true;
+                const matchType = type ? p.type === type : true;
+                return matchSearch && matchStatus && matchType;
+            });
+            const container = document.getElementById('premiseList');
+            if (list.length === 0) { container.innerHTML = '<p style="color:#5e6f8d; padding:20px;">Нет помещений</p>'; return; }
+            container.innerHTML = list.map(p => {
+                const statusLabel = { free:'Свободно', rented:'Арендовано', repair:'Ремонт' }[p.status] || p.status;
+                const badge = p.status === 'free' ? 'badge-success' : p.status === 'rented' ? 'badge-warning' : 'badge-danger';
+                return `
+                <div class="item-card">
+                    <div class="title">${p.address}</div>
+                    <div class="sub">Этаж ${p.floor} · ${p.area} м² · ${p.type === 'commercial' ? 'Коммерческое' : p.type === 'residential' ? 'Жилое' : 'Склад'}</div>
+                    <div class="sub">Ставка: ${p.monthlyRent} ₽/мес</div>
+                    <div><span class="badge ${badge}">${statusLabel}</span></div>
+                    <div class="actions-card">
+                        <button class="btn btn-outline" onclick="editPremise(${p.id})"><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-danger" onclick="deletePremise(${p.id})"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        window.addPremise = function() {
+            showModal('Добавление помещения', getPremiseForm(), (data) => {
+                db.premises.push({
+                    id: getNextId('premises'),
+                    address: data.address,
+                    floor: parseInt(data.floor) || 0,
+                    area: parseFloat(data.area) || 0,
+                    type: data.type,
+                    monthlyRent: parseFloat(data.monthlyRent) || 0,
+                    status: data.status
+                });
+                saveData(db);
+                renderPremises();
+                renderDashboard();
+            });
+        };
+
+        window.editPremise = function(id) {
+            const premise = db.premises.find(p => p.id === id);
+            if (!premise) return;
+            showModal('Редактирование помещения', getPremiseForm(premise), (data) => {
+                premise.address = data.address;
+                premise.floor = parseInt(data.floor) || 0;
+                premise.area = parseFloat(data.area) || 0;
+                premise.type = data.type;
+                premise.monthlyRent = parseFloat(data.monthlyRent) || 0;
+                premise.status = data.status;
+                saveData(db);
+                renderPremises();
+                renderDashboard();
+            });
+        };
+
+        window.deletePremise = function(id) {
+            if (!confirm('Удалить помещение?')) return;
+            const hasContract = db.contracts.some(c => c.premiseId === id && (c.status === 'active' || c.status === 'expiring'));
+            if (hasContract) { alert('Есть активные договоры.'); return; }
+            db.premises = db.premises.filter(p => p.id !== id);
+            saveData(db);
+            renderPremises();
+            renderDashboard();
+        };
+
+        function getPremiseForm(data) {
+            data = data || { address:'', floor:'', area:'', type:'commercial', monthlyRent:'', status:'free' };
+            return `
+                <label>Адрес *</label><input id="f-address" value="${data.address}" />
+                <div class="form-row">
+                    <div><label>Этаж</label><input id="f-floor" value="${data.floor}" type="number" /></div>
+                    <div><label>Площадь (м²)</label><input id="f-area" value="${data.area}" type="number" step="0.1" /></div>
+                </div>
+                <label>Тип</label>
+                <select id="f-type"><option value="commercial" ${data.type==='commercial'?'selected':''}>Коммерческое</option><option value="residential" ${data.type==='residential'?'selected':''}>Жилое</option><option value="warehouse" ${data.type==='warehouse'?'selected':''}>Склад</option></select>
+                <label>Ставка (₽/мес) *</label><input id="f-monthlyRent" value="${data.monthlyRent}" type="number" step="100" />
+                <label>Статус</label>
+                <select id="f-status"><option value="free" ${data.status==='free'?'selected':''}>Свободно</option><option value="rented" ${data.status==='rented'?'selected':''}>Арендовано</option><option value="repair" ${data.status==='repair'?'selected':''}>Ремонт</option></select>
+            `;
+        }
+
+        // ============================================================
+        // 9. АРЕНДАТОРЫ
+        // ============================================================
+        function renderTenants() {
+            const search = document.getElementById('tenantSearch').value.toLowerCase();
+            let list = db.tenants.filter(t => t.name.toLowerCase().includes(search) || (t.contact && t.contact.toLowerCase().includes(search)));
+            const container = document.getElementById('tenantList');
+            if (list.length === 0) { container.innerHTML = '<p style="color:#5e6f8d; padding:20px;">Нет арендаторов</p>'; return; }
+            container.innerHTML = list.map(t => `
+                <div class="item-card">
+                    <div class="title">${t.name}</div>
+                    <div class="sub">${t.contact || ''} · ${t.phone || ''}</div>
+                    <div class="sub">${t.email || ''} · ИНН: ${t.inn || ''}</div>
+                    <div class="actions-card">
+                        <button class="btn btn-outline" onclick="editTenant(${t.id})"><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-danger" onclick="deleteTenant(${t.id})"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        window.addTenant = function() {
+            showModal('Добавление арендатора', getTenantForm(), (data) => {
+                db.tenants.push({ id: getNextId('tenants'), ...data });
+                saveData(db);
+                renderTenants();
+            });
+        };
+
+        window.editTenant = function(id) {
+            const tenant = db.tenants.find(t => t.id === id);
+            if (!tenant) return;
+            showModal('Редактирование арендатора', getTenantForm(tenant), (data) => {
+                Object.assign(tenant, data);
+                saveData(db);
+                renderTenants();
+            });
+        };
+
+        window.deleteTenant = function(id) {
+            if (!confirm('Удалить арендатора?')) return;
+            const hasContract = db.contracts.some(c => c.tenantId === id && (c.status === 'active' || c.status === 'expiring'));
+            if (hasContract) { alert('Есть активные договоры.'); return; }
+            db.tenants = db.tenants.filter(t => t.id !== id);
+            saveData(db);
+            renderTenants();
+        };
+
+        function getTenantForm(data) {
+            data = data || { name:'', contact:'', phone:'', email:'', inn:'' };
+            return `
+                <label>Название/ФИО *</label><input id="f-name" value="${data.name}" />
+                <label>Контактное лицо</label><input id="f-contact" value="${data.contact || ''}" />
+                <label>Телефон</label><input id="f-phone" value="${data.phone || ''}" />
+                <label>Email</label><input id="f-email" value="${data.email || ''}" />
+                <label>ИНН</label><input id="f-inn" value="${data.inn || ''}" />
+            `;
+        }
+
+        // ============================================================
+        // 10. ДОГОВОРЫ
+        // ============================================================
+        function renderContracts() {
+            const search = document.getElementById('contractSearch').value.toLowerCase();
+            const status = document.getElementById('contractStatusFilter').value;
+            let list = db.contracts.filter(c => {
+                const premise = db.premises.find(p => p.id === c.premiseId);
+                const tenant = db.tenants.find(t => t.id === c.tenantId);
+                const searchText = (premise ? premise.address : '') + ' ' + (tenant ? tenant.name : '');
+                const matchSearch = searchText.toLowerCase().includes(search);
+                const matchStatus = status ? c.status === status : true;
+                return matchSearch && matchStatus;
+            });
+            // Обновление статусов
+            const now = new Date();
+            list.forEach(c => {
+                if (c.status === 'active') {
+                    const end = new Date(c.endDate);
+                    const diff = (end - now) / (1000*60*60*24);
+                    if (diff < 0) c.status = 'expired';
+                    else if (diff < 30) c.status = 'expiring';
+                }
+            });
+            saveData(db);
+            const tbody = document.getElementById('contractTableBody');
+            if (list.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#5e6f8d;">Нет договоров</td></tr>'; return; }
+            tbody.innerHTML = list.map(c => {
+                const premise = db.premises.find(p => p.id === c.premiseId);
+                const tenant = db.tenants.find(t => t.id === c.tenantId);
+                const statusMap = { active:'Активный', expiring:'Истекает', expired:'Завершён', terminated:'Расторгнут' };
+                const badgeMap = { active:'badge-success', expiring:'badge-warning', expired:'badge-danger', terminated:'badge-danger' };
+                return `
+                    <tr>
+                        <td>${premise ? premise.address : '—'}</td>
+                        <td>${tenant ? tenant.name : '—'}</td>
+                        <td>${c.startDate} — ${c.endDate}</td>
+                        <td>${c.monthlyRent} ₽</td>
+                        <td><span class="badge ${badgeMap[c.status] || 'badge-info'}">${statusMap[c.status] || c.status}</span></td>
+                        <td>
+                            <button class="btn btn-outline" onclick="editContract(${c.id})"><i class="fas fa-edit"></i></button>
+                            <button class="btn btn-danger" onclick="terminateContract(${c.id})"><i class="fas fa-times"></i></button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        window.addContract = function() {
+            showModal('Создание договора', getContractForm(), (data) => {
+                const premiseId = parseInt(data.premiseId);
+                const start = data.startDate;
+                const end = data.endDate;
+                // Проверка пересечений
+                const conflict = db.contracts.some(c => 
+                    c.premiseId === premiseId && 
+                    (c.status === 'active' || c.status === 'expiring') &&
+                    ((start >= c.startDate && start <= c.endDate) || (end >= c.startDate && end <= c.endDate) || (start <= c.startDate && end >= c.endDate))
+                );
+                if (conflict) { document.getElementById('modalError').textContent = 'Помещение занято на этот период.'; return; }
+                db.contracts.push({
+                    id: getNextId('contracts'),
+                    premiseId: premiseId,
+                    tenantId: parseInt(data.tenantId),
+                    startDate: start,
+                    endDate: end,
+                    actualEndDate: null,
+                    monthlyRent: parseFloat(data.monthlyRent),
+                    paymentDay: parseInt(data.paymentDay) || 1,
+                    status: 'active'
+                });
+                const premise = db.premises.find(p => p.id === premiseId);
+                if (premise) premise.status = 'rented';
+                saveData(db);
+                renderContracts();
+                renderDashboard();
+                renderPremises();
+            });
+        };
+
+        window.editContract = function(id) {
+            const contract = db.contracts.find(c => c.id === id);
+            if (!contract) return;
+            showModal('Редактирование договора', getContractForm(contract), (data) => {
+                const premiseId = parseInt(data.premiseId);
+                const start = data.startDate;
+                const end = data.endDate;
+                const conflict = db.contracts.some(c => 
+                    c.id !== id &&
+                    c.premiseId === premiseId && 
+                    (c.status === 'active' || c.status === 'expiring') &&
+                    ((start >= c.startDate && start <= c.endDate) || (end >= c.startDate && end <= c.endDate) || (start <= c.startDate && end >= c.endDate))
+                );
+                if (conflict) { document.getElementById('modalError').textContent = 'Помещение занято на этот период.'; return; }
+                contract.premiseId = premiseId;
+                contract.tenantId = parseInt(data.tenantId);
+                contract.startDate = start;
+                contract.endDate = end;
+                contract.monthlyRent = parseFloat(data.monthlyRent);
+                contract.paymentDay = parseInt(data.paymentDay) || 1;
+                saveData(db);
+                renderContracts();
+                renderDashboard();
+                renderPremises();
+            });
+        };
+
+        window.terminateContract = function(id) {
+            if (!confirm('Расторгнуть договор?')) return;
+            const contract = db.contracts.find(c => c.id === id);
+            if (!contract) return;
+            contract.status = 'terminated';
+            contract.actualEndDate = new Date().toISOString().split('T')[0];
+            const premise = db.premises.find(p => p.id === contract.premiseId);
+            if (premise) premise.status = 'free';
+            saveData(db);
+            renderContracts();
+            renderDashboard();
+            renderPremises();
+        };
+
+        function getContractForm(data) {
+            data = data || { premiseId:'', tenantId:'', startDate:'', endDate:'', monthlyRent:'', paymentDay:'5' };
+            const premiseOpts = db.premises.map(p => `<option value="${p.id}" ${p.id==data.premiseId?'selected':''}>${p.address}</option>`).join('');
+            const tenantOpts = db.tenants.map(t => `<option value="${t.id}" ${t.id==data.tenantId?'selected':''}>${t.name}</option>`).join('');
+            return `
+                <label>Помещение *</label><select id="f-premiseId">${premiseOpts}</select>
+                <label>Арендатор *</label><select id="f-tenantId">${tenantOpts}</select>
+                <div class="form-row">
+                    <div><label>Начало *</label><input id="f-startDate" value="${data.startDate || ''}" type="date" /></div>
+                    <div><label>Окончание *</label><input id="f-endDate" value="${data.endDate || ''}" type="date" /></div>
+                </div>
+                <div class="form-row">
+                    <div><label>Ставка (₽/мес) *</label><input id="f-monthlyRent" value="${data.monthlyRent || ''}" type="number" step="100" /></div>
+                    <div><label>День платежа</label><input id="f-paymentDay" value="${data.paymentDay || '5'}" type="number" min="1" max="31" /></div>
+                </div>
+            `;
+        }
+
+        // ============================================================
+        // 11. ПЛАТЕЖИ
+        // ============================================================
+        function renderPayments() {
+            const filterContractId = document.getElementById('paymentContractFilter').value;
+            let list = db.payments;
+            if (filterContractId) list = list.filter(p => p.contractId === parseInt(filterContractId));
+            // Обновить селект
+            const sel = document.getElementById('paymentContractFilter');
+            const currentVal = sel.value;
+            sel.innerHTML = '<option value="">Все договоры</option>';
+            db.contracts.forEach(c => {
+                const premise = db.premises.find(p => p.id === c.premiseId);
+                const tenant = db.tenants.find(t => t.id === c.tenantId);
+                const label = `${premise ? premise.address : ''} - ${tenant ? tenant.name : ''}`;
+                sel.innerHTML += `<option value="${c.id}" ${c.id==currentVal?'selected':''}>${label}</option>`;
+            });
+            const container = document.getElementById('paymentList');
+            if (list.length === 0) { container.innerHTML = '<p style="color:#5e6f8d; padding:20px;">Нет платежей</p>'; return; }
+            container.innerHTML = list.map(p => {
+                const contract = db.contracts.find(c => c.id === p.contractId);
+                const premise = contract ? db.premises.find(pr => pr.id === contract.premiseId) : null;
+                const tenant = contract ? db.tenants.find(t => t.id === contract.tenantId) : null;
+                return `
+                    <div class="item-card">
+                        <div class="title">${p.amount} ₽</div>
+                        <div class="sub">${p.paymentDate} · №${p.receiptNumber || '—'}</div>
+                        <div class="sub">${premise ? premise.address : '—'} · ${tenant ? tenant.name : '—'}</div>
+                        <div class="sub">${p.comment || ''}</div>
+                        <div class="actions-card">
+                            <button class="btn btn-danger" onclick="deletePayment(${p.id})"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        window.addPayment = function() {
+            showModal('Внесение платежа', getPaymentForm(), (data) => {
+                db.payments.push({
+                    id: getNextId('payments'),
+                    contractId: parseInt(data.contractId),
+                    amount: parseFloat(data.amount),
+                    paymentDate: data.paymentDate,
+                    receiptNumber: data.receiptNumber || '',
+                    comment: data.comment || ''
+                });
+                saveData(db);
+                renderPayments();
+                renderDashboard();
+            });
+        };
+
+        window.deletePayment = function(id) {
+            if (!confirm('Удалить платёж?')) return;
+            db.payments = db.payments.filter(p => p.id !== id);
+            saveData(db);
+            renderPayments();
+            renderDashboard();
+        };
+
+        function getPaymentForm(data) {
+            data = data || { contractId:'', amount:'', paymentDate:'', receiptNumber:'', comment:'' };
+            const contractOpts = db.contracts.map(c => {
+                const premise = db.premises.find(p => p.id === c.premiseId);
+                const tenant = db.tenants.find(t => t.id === c.tenantId);
+                const label = `${premise ? premise.address : ''} - ${tenant ? tenant.name : ''}`;
+                return `<option value="${c.id}" ${c.id==data.contractId?'selected':''}>${label}</option>`;
+            }).join('');
+            return `
+                <label>Договор *</label><select id="f-contractId">${contractOpts}</select>
+                <div class="form-row">
+                    <div><label>Сумма *</label><input id="f-amount" value="${data.amount || ''}" type="number" step="100" /></div>
+                    <div><label>Дата платежа *</label><input id="f-paymentDate" value="${data.paymentDate || ''}" type="date" /></div>
+                </div>
+                <label>№ квитанции</label><input id="f-receiptNumber" value="${data.receiptNumber || ''}" />
+                <label>Комментарий</label><input id="f-comment" value="${data.comment || ''}" />
+            `;
+        }
+
+        // ============================================================
+        // 12. ПОЛЬЗОВАТЕЛИ (админ)
+        // ============================================================
+        function renderUsers() {
+            const tbody = document.getElementById('userTableBody');
+            if (!currentUser || currentUser.role !== 'admin') { tbody.innerHTML = '<tr><td colspan="4">Доступ запрещён</td></tr>'; return; }
+            tbody.innerHTML = db.users.map(u => `
+                <tr>
+                    <td>${u.name}</td>
+                    <td>${u.login}</td>
+                    <td>${u.role === 'admin' ? 'Админ' : 'Менеджер'}</td>
+                    <td>
+                        <button class="btn btn-outline" onclick="editUser(${u.id})"><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-danger" onclick="deleteUser(${u.id})"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        window.addUser = function() {
+            showModal('Добавление пользователя', getUserForm(), (data) => {
+                if (db.users.some(u => u.login === data.login)) {
+                    document.getElementById('modalError').textContent = 'Логин уже занят.';
+                    return;
+                }
+                db.users.push({
+                    id: getNextId('users'),
+                    name: data.name,
+                    login: data.login,
+                    password: data.password,
+                    role: data.role
+                });
+                saveData(db);
+                renderUsers();
+            });
+        };
+
+        window.editUser = function(id) {
+            const user = db.users.find(u => u.id === id);
+            if (!user) return;
+            showModal('Редактирование пользователя', getUserForm(user), (data) => {
+                if (data.login !== user.login && db.users.some(u => u.login === data.login && u.id !== id)) {
+                    document.getElementById('modalError').textContent = 'Логин уже занят.';
+                    return;
+                }
+                user.name = data.name;
+                user.login = data.login;
+                if (data.password) user.password = data.password;
+                user.role = data.role;
+                saveData(db);
+                renderUsers();
+            });
+        };
+
+        window.deleteUser = function(id) {
+            if (id === currentUser.id) { alert('Нельзя удалить себя.'); return; }
+            if (!confirm('Удалить пользователя?')) return;
+            db.users = db.users.filter(u => u.id !== id);
+            saveData(db);
+            renderUsers();
+        };
+
+        function getUserForm(data) {
+            data = data || { name:'', login:'', password:'', role:'manager' };
+            return `
+                <label>Имя *</label><input id="f-name" value="${data.name}" />
+                <label>Логин *</label><input id="f-login" value="${data.login}" />
+                <label>Пароль ${data.password ? '(оставьте пустым, чтобы не менять)' : '*'}</label><input id="f-password" value="${data.password || ''}" type="password" />
+                <label>Роль</label>
+                <select id="f-role"><option value="admin" ${data.role==='admin'?'selected':''}>Администратор</option><option value="manager" ${data.role==='manager'?'selected':''}>Менеджер</option></select>
+            `;
+        }
+
+        // ============================================================
+        // 13. МОДАЛЬНОЕ ОКНО
+        // ============================================================
+        let modalCallback = null;
+
+        function showModal(title, html, onSave) {
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalBody').innerHTML = html;
+            document.getElementById('modalError').textContent = '';
+            document.getElementById('modalOverlay').classList.add('open');
+            modalCallback = onSave;
+        }
+
+        document.getElementById('modalCancel').addEventListener('click', function() {
+            document.getElementById('modalOverlay').classList.remove('open');
+            modalCallback = null;
+        });
+        document.getElementById('modalOverlay').addEventListener('click', function(e) {
+            if (e.target === this) {
+                document.getElementById('modalOverlay').classList.remove('open');
+                modalCallback = null;
+            }
+        });
+        document.getElementById('modalSave').addEventListener('click', function() {
+            if (!modalCallback) return;
+            const inputs = document.querySelectorAll('#modalBody input, #modalBody select');
+            const data = {};
+            inputs.forEach(el => {
+                const id = el.id;
+                if (id.startsWith('f-')) {
+                    const key = id.replace('f-', '');
+                    data[key] = el.value;
+                }
+            });
+            modalCallback(data);
+        });
+
+        // ============================================================
+        // 14. СОБЫТИЯ КНОПОК "ДОБАВИТЬ" И ФИЛЬТРЫ
+        // ============================================================
+        document.getElementById('addPremiseBtn').addEventListener('click', window.addPremise);
+        document.getElementById('addTenantBtn').addEventListener('click', window.addTenant);
+        document.getElementById('addContractBtn').addEventListener('click', window.addContract);
+        document.getElementById('addPaymentBtn').addEventListener('click', window.addPayment);
+        document.getElementById('addUserBtn').addEventListener('click', window.addUser);
+
+        // Фильтры
+        document.getElementById('premiseSearch').addEventListener('input', renderPremises);
+        document.getElementById('premiseStatusFilter').addEventListener('change', renderPremises);
+        document.getElementById('premiseTypeFilter').addEventListener('change', renderPremises);
+        document.getElementById('premiseResetFilter').addEventListener('click', function() {
+            document.getElementById('premiseSearch').value = '';
+            document.getElementById('premiseStatusFilter').value = '';
+            document.getElementById('premiseTypeFilter').value = '';
+            renderPremises();
+        });
+        document.getElementById('tenantSearch').addEventListener('input', renderTenants);
+        document.getElementById('tenantResetFilter').addEventListener('click', function() {
+            document.getElementById('tenantSearch').value = '';
+            renderTenants();
+        });
+        document.getElementById('contractSearch').addEventListener('input', renderContracts);
+        document.getElementById('contractStatusFilter').addEventListener('change', renderContracts);
+        document.getElementById('contractResetFilter').addEventListener('click', function() {
+            document.getElementById('contractSearch').value = '';
+            document.getElementById('contractStatusFilter').value = '';
+            renderContracts();
+        });
+        document.getElementById('paymentContractFilter').addEventListener('change', renderPayments);
+        document.getElementById('paymentResetFilter').addEventListener('click', function() {
+            document.getElementById('paymentContractFilter').value = '';
+            renderPayments();
+        });
+
+        // ============================================================
+        // 15. СТАРТОВОЕ СОСТОЯНИЕ
+        // ============================================================
+        // По умолчанию показываем страницу входа
+        document.getElementById('loginPage').style.display = 'block';
+        document.getElementById('app').style.display = 'none';
+
+        console.log('Приложение загружено. Используйте admin/admin123 или manager/manager123');
+    }); // конец DOMContentLoaded
+</script>
+</body>
+</html>
